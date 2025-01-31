@@ -19,15 +19,14 @@ def sari_metin(text):    return f"\033[38;2;255;255;0m{text}\033[0m"
 
 def scrape_links(link: str, desired_links: int, output_csv: str = "links.csv") -> None:
     """
-    main.py'deki mantığa denk: Belirtilen link sayısı kadar href toplayarak links.csv'ye yazar.
+    Belirtilen link sayısı kadar href toplayarak links.csv'ye yazar.
     """
-    # Var olan CSV'yi temizlemek isterseniz (opsiyonel)
     if os.path.exists(output_csv):
         os.remove(output_csv)
 
     linnk = link.replace("page=1", "page={page}")
 
-    # Chrome Options (EK BAYRAKLAR ÖNEMLİ)
+    # Chrome Options
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
@@ -82,10 +81,9 @@ def run_data_mining(
     excel_file: str = "list.xlsx"
 ) -> int:
     """
-    veri_kaz.py mantığı: links.csv'deki linkleri dolaşarak verileri list.xlsx'e kaydeder.
+    links.csv'deki linkleri dolaşarak verileri list.xlsx'e kaydeder.
     Geriye 'basarili_islem' (kaç link başarıyla işlendi) döndürür.
     """
-
     start_time = time.time()
     basarili_islem = 0
 
@@ -102,8 +100,6 @@ def run_data_mining(
         fill = PatternFill(start_color="FFA500", end_color="FFA500", fill_type="solid")
         for cell in ws[1]:
             cell.fill = fill
-
-        # Sütun genişlikleri
         for col in ws.columns:
             column = col[0].column_letter
             ws.column_dimensions[column].width = 40
@@ -234,21 +230,16 @@ def run_data_mining(
                 job_sector
             ])
 
-            # İşlenen linki listeden sil (opsiyonel)
             df.drop(index, inplace=True)
-
             basarili_islem += 1
             print(sari_metin(f"[ + ] Veri Kazıldı! => Toplam Başarılı İşlem: {basarili_islem}"))
 
         except Exception as e:
             print(kirmizi_metin(f"Hata: {url} => {e}"))
 
-        # Kaydet
         wb.save(excel_file)
 
-    # Kalan linkleri tekrar yazmak isterseniz (opsiyonel)
     df.to_csv(links_csv, index=False, header=False)
-
     driver.quit()
 
     elapsed_time = time.time() - start_time

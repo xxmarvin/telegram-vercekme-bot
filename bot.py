@@ -14,6 +14,7 @@ logging.basicConfig(
     level=logging.INFO
 )
 
+# Bot tokenınızı buraya ekleyin ya da ortam değişkeninden alın.
 BOT_TOKEN = os.getenv("BOT_TOKEN", "7380181516:AAGAzBZInwCKYSdhwqNnIGl-0Q7IXBkyk9c")
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -40,20 +41,17 @@ async def scrape_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         link = args[1]
         link_count = int(args[2])
 
-        # 1) Linkleri CSV'ye çek
         await update.message.reply_text(
             f"Linkler çekiliyor... Link: {link}, Adet: {link_count}"
         )
         scrape_links(link, link_count, output_csv="links.csv")
 
-        # 2) Veri kazma
         await update.message.reply_text("Veri kazma işlemi başlıyor...")
         basarili_islem = run_data_mining(links_csv="links.csv", excel_file="list.xlsx")
         await update.message.reply_text(
             f"Veri kazma tamamlandı! Başarılı işlem sayısı: {basarili_islem}"
         )
 
-        # 3) Ortaya çıkan dosyaları Telegram'dan gönder
         if os.path.exists("links.csv"):
             await update.message.reply_document(document=open("links.csv", "rb"))
         if os.path.exists("list.xlsx"):
@@ -68,10 +66,8 @@ def main():
         raise ValueError("Lütfen geçerli bir BOT_TOKEN ortam değişkeni ayarlayınız.")
 
     app = ApplicationBuilder().token(BOT_TOKEN).build()
-
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("scrape", scrape_command))
-
     print("Bot çalışmaya başladı...")
     app.run_polling()
 
