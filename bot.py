@@ -14,7 +14,7 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "<BOT_TOKENINIZ>")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "7380181516:AAGAzBZInwCKYSdhwqNnIGl-0Q7IXBkyk9c")
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ /start komutu """
