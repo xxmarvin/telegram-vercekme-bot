@@ -7,24 +7,17 @@ from telegram.ext import (
     CommandHandler,
     ContextTypes,
 )
-
-# scraper.py içindeki fonksiyonları içe aktar
 from scraper import scrape_links, run_data_mining
 
-# Loglama ayarı
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 
-# Ortam değişkeninden TOKEN'i alalım (Railway'de ayarlayacaksınız)
-BOT_TOKEN = os.getenv("BOT_TOKEN", "7380181516:AAGAzBZInwCKYSdhwqNnIGl-0Q7IXBkyk9c")  
-# BOT_TOKEN'ı bir .env dosyasında saklayıp python-dotenv ile de okuyabilirsiniz.
+BOT_TOKEN = os.getenv("BOT_TOKEN", "<BOT_TOKENINIZ>")
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    /start komutunu yakalar.
-    """
+    """ /start komutu """
     await update.message.reply_text(
         "Merhaba, ben sizin web scraping botunuzum!\n"
         "/scrape <LINK> <ADET> komutuyla linkleri çekebilirim.\n"
@@ -33,57 +26,54 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def scrape_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    /scrape <link> <link_sayisi>
-    Kullanıcıdan link ve çekilecek link sayısını alarak scraping başlatır.
+    /scrape <url> <adet>
+    Ör: /scrape https://example.com?page=1 10
     """
     try:
-        # Komutun içeriğini parçalayalım
-        # Örnek: "/scrape https://example.com?page=1 10"
-        message_parts = update.message.text.split()
-        if len(message_parts) < 3:
-            await update.message.reply_text("Lütfen link ve çekilecek link sayısını giriniz. Ör: /scrape <url> <adet>")
+        args = update.message.text.split()
+        if len(args) < 3:
+            await update.message.reply_text(
+                "Lütfen link ve çekilecek link sayısını giriniz. Örnek: /scrape <URL> <ADET>"
+            )
             return
 
-        link = message_parts[1]
-        link_count = int(message_parts[2])
+        link = args[1]
+        link_count = int(args[2])
 
-        # 1) Links.csv oluşturma (scrape_links fonksiyonu)
-        await update.message.reply_text(f"Linkler çekiliyor... Link: {link}, Adet: {link_count}")
+        # 1) Linkleri CSV'ye çek
+        await update.message.reply_text(
+            f"Linkler çekiliyor... Link: {link}, Adet: {link_count}"
+        )
         scrape_links(link, link_count, output_csv="links.csv")
 
-        await update.message.reply_text("Linkler çekildi! Şimdi veri kazma işlemi başlıyor...")
-        # 2) Veri kazma (run_data_mining)
+        # 2) Veri kazma
+        await update.message.reply_text("Veri kazma işlemi başlıyor...")
         basarili_islem = run_data_mining(links_csv="links.csv", excel_file="list.xlsx")
-        await update.message.reply_text(f"Veri kazma tamamlandı! Toplam Başarılı İşlem: {basarili_islem}")
+        await update.message.reply_text(
+            f"Veri kazma tamamlandı! Başarılı işlem sayısı: {basarili_islem}"
+        )
 
-        # 3) Ortaya çıkan dosyaları kullanıcıya gönderme
+        # 3) Ortaya çıkan dosyaları Telegram'dan gönder
         if os.path.exists("links.csv"):
             await update.message.reply_document(document=open("links.csv", "rb"))
         if os.path.exists("list.xlsx"):
             await update.message.reply_document(document=open("list.xlsx", "rb"))
 
-        await update.message.reply_text("İşlem tamam! Dosyalar gönderildi.")
-
+        await update.message.reply_text("İşlem bitti, dosyalar gönderildi.")
     except Exception as e:
         await update.message.reply_text(f"Hata oluştu: {e}")
 
 def main():
-    """
-    Botu başlatan ana fonksiyon.
-    """
-    if BOT_TOKEN is None or BOT_TOKEN.startswith("<"):
-        raise ValueError("Lütfen geçerli bir BOT_TOKEN ortam değişkeni ayarlayın.")
+    if BOT_TOKEN.startswith("<"):
+        raise ValueError("Lütfen geçerli bir BOT_TOKEN ortam değişkeni ayarlayınız.")
 
-    # Uygulama oluştur
-    application = ApplicationBuilder().token(BOT_TOKEN).build()
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    # Komutları ekle
-    application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(CommandHandler("scrape", scrape_command))
+    app.add_handler(CommandHandler("start", start_command))
+    app.add_handler(CommandHandler("scrape", scrape_command))
 
-    # Botu çalıştır
-    print("Bot çalışıyor...")
-    application.run_polling()
+    print("Bot çalışmaya başladı...")
+    app.run_polling()
 
 if __name__ == "__main__":
     main()

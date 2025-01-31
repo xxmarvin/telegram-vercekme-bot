@@ -11,37 +11,43 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 # -------------------------------------------------------------
-# Ortak renkli metin fonksiyonları (isteğe bağlı, log için kullanılıyor)
+# Renkli metin fonksiyonları (isteğe bağlı, log'lar için)
 def kirmizi_metin(text): return f"\033[38;2;255;0;0m{text}\033[0m"
 def yesil_metin(text):   return f"\033[38;2;0;190;0m{text}\033[0m"
-def sari_metin(text):   return f"\033[38;2;255;255;0m{text}\033[0m"
+def sari_metin(text):    return f"\033[38;2;255;255;0m{text}\033[0m"
 # -------------------------------------------------------------
 
 def scrape_links(link: str, desired_links: int, output_csv: str = "links.csv") -> None:
     """
-    main.py'deki mantık: Belirtilen link sayısı kadar href toplayarak links.csv'ye yazar.
-    Parametreler:
-        link          : İlk sayfadaki link (içinde page=1 vb. yer alan).
-        desired_links : Kaç adet link çekileceği.
-        output_csv    : Çıktı CSV dosyası (varsayılan: links.csv).
+    main.py'deki mantığa denk: Belirtilen link sayısı kadar href toplayarak links.csv'ye yazar.
     """
-    # Eğer output_csv sıfırdan oluşturulacaksa eskiyi silmek isteyebilirsiniz
+    # Var olan CSV'yi temizlemek isterseniz (opsiyonel)
     if os.path.exists(output_csv):
         os.remove(output_csv)
 
     linnk = link.replace("page=1", "page={page}")
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
-    options.add_argument("--log-level=3")
 
-    driver = webdriver.Chrome(options=options)
+    # Chrome Options (EK BAYRAKLAR ÖNEMLİ)
+    chrome_options = webdriver.ChromeOptions()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--disable-setuid-sandbox")
+    chrome_options.add_argument("--remote-debugging-port=9222")
+    chrome_options.add_argument("--log-level=3")
+
+    driver = webdriver.Chrome(options=chrome_options)
     collected_links = 0
     page = 1
 
     while collected_links < desired_links:
         driver.get(linnk.format(page=page))
         wait = WebDriverWait(driver, 10)
-        elements = wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "jv-result-summary-title a")))
+
+        elements = wait.until(
+            EC.presence_of_all_elements_located((By.CSS_SELECTOR, "jv-result-summary-title a"))
+        )
 
         for element in elements:
             href_link = element.get_attribute("href")
@@ -55,18 +61,20 @@ def scrape_links(link: str, desired_links: int, output_csv: str = "links.csv") -
 
         if collected_links < desired_links:
             try:
-                driver.execute_script('document.querySelector("#shared-pagination-next > a > span").click()')
+                driver.execute_script(
+                    'document.querySelector("#shared-pagination-next > a > span").click()'
+                )
                 time.sleep(2)
                 page += 1
                 print(sari_metin(f"Sayfa: {page}"))
             except:
-                print(kirmizi_metin("Tüm Sayfalar Çekildi!"))
+                print(kirmizi_metin("Tüm sayfalar çekildi, başka veri yok!"))
                 break
         else:
             break
 
     driver.quit()
-    print(yesil_metin("Tüm linkler Çekildi! Şimdi veri kazma başlatılıyor..."))
+    print(yesil_metin("Tüm linkler çekildi! Veri kazma başlatılacak..."))
 
 
 def run_data_mining(
@@ -74,18 +82,14 @@ def run_data_mining(
     excel_file: str = "list.xlsx"
 ) -> int:
     """
-    veri_kaz.py'deki mantık: links.csv'deki linkleri dolaşarak verileri list.xlsx'e kaydeder.
-    Parametreler:
-        links_csv  : Kaynak CSV (varsayılan: links.csv)
-        excel_file : Çıktı Excel dosyası (varsayılan: list.xlsx)
-    Return:
-        basarili_islem : Kaç adet işlemin başarıyla tamamlandığı.
+    veri_kaz.py mantığı: links.csv'deki linkleri dolaşarak verileri list.xlsx'e kaydeder.
+    Geriye 'basarili_islem' (kaç link başarıyla işlendi) döndürür.
     """
 
     start_time = time.time()
     basarili_islem = 0
 
-    # Excel Hazırlığı
+    # Excel hazırlığı
     try:
         wb = load_workbook(excel_file)
         ws = wb.active
@@ -98,25 +102,24 @@ def run_data_mining(
         fill = PatternFill(start_color="FFA500", end_color="FFA500", fill_type="solid")
         for cell in ws[1]:
             cell.fill = fill
+
         # Sütun genişlikleri
         for col in ws.columns:
-            max_length = 40
             column = col[0].column_letter
-            ws.column_dimensions[column].width = max_length
+            ws.column_dimensions[column].width = 40
 
-    # Selenium Ayarları
+    # Chrome Options
     chrome_options = Options()
-    chrome_options.add_experimental_option('excludeSwitches', ["enable-automation", 'enable-logging'])
-    chrome_options.add_argument('--disable-logging')
-    chrome_options.add_argument('--log-level=3')
-    chrome_options.add_argument('--disable-infobars')
-    chrome_options.add_argument('--disable-extensions')
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument('--disable-gpu')
-    chrome_options.add_argument('--headless')  # Headless
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--disable-setuid-sandbox")
+    chrome_options.add_argument("--remote-debugging-port=9222")
+    chrome_options.add_experimental_option('excludeSwitches', ["enable-automation", 'enable-logging'])
 
     driver = webdriver.Chrome(options=chrome_options)
-    wait = WebDriverWait(driver, 6)
+    wait = WebDriverWait(driver, 8)
 
     # CSV okunuyor
     df = pd.read_csv(links_csv, header=None, names=['link'])
@@ -126,8 +129,8 @@ def run_data_mining(
         driver.get(url)
         time.sleep(2)
 
-        # Çerez onayı - hata vermezse tıkla
         try:
+            # Cookie butonu vs.
             accept_btn = driver.find_element(By.CSS_SELECTOR, 'a.wt-ecl-button.wt-ecl-button--primary.cck-actions-button')
             accept_btn.click()
         except:
@@ -146,14 +149,18 @@ def run_data_mining(
 
             # E-posta
             try:
-                email_elem = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'a[href^="mailto:"]')))
+                email_elem = wait.until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, 'a[href^="mailto:"]'))
+                )
                 email_address = email_elem.text.strip()
             except:
                 pass
 
             # Telefon
             try:
-                phone_elem = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'li#jv-details-telNumber-0-0')))
+                phone_elem = wait.until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, 'li#jv-details-telNumber-0-0'))
+                )
                 phone_number_raw = phone_elem.text
                 phone_number = phone_number_raw.replace('Tel.:', '').strip()
             except:
@@ -170,35 +177,47 @@ def run_data_mining(
 
             # Lokasyon
             try:
-                location_elem = wait.until(EC.presence_of_element_located((By.ID, "jv-details-job-location")))
+                location_elem = wait.until(
+                    EC.presence_of_element_located((By.ID, "jv-details-job-location"))
+                )
                 job_location = location_elem.text.strip()
             except:
                 pass
 
             # İşveren Adı
             try:
-                employer_name_elem = wait.until(EC.presence_of_element_located((By.ID, "jv-details-employer-name")))
+                employer_name_elem = wait.until(
+                    EC.presence_of_element_located((By.ID, "jv-details-employer-name"))
+                )
                 employer_name = employer_name_elem.text.strip()
             except:
                 pass
 
             # Sektör
             try:
-                job_sector_elem = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'dd.ecl-description-list__definition span#jv-employer-sector-codes-result')))
+                job_sector_elem = wait.until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR,
+                    'dd.ecl-description-list__definition span#jv-employer-sector-codes-result'))
+                )
                 job_sector = job_sector_elem.text.strip()
             except:
                 pass
 
             # Şirket Adı
             try:
-                company_name_elem = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'h2.ecl-u-type-heading-2.ecl-u-mt-s')))
+                company_name_elem = wait.until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR,
+                    'h2.ecl-u-type-heading-2.ecl-u-mt-s'))
+                )
                 company_name = company_name_elem.text.strip()
             except:
                 pass
 
-            # İrtibat Kişi Adı
+            # İrtibat Kişi
             try:
-                contact_name_elem = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'li#jv-details-displayName-0')))
+                contact_name_elem = wait.until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, 'li#jv-details-displayName-0'))
+                )
                 contact_name = contact_name_elem.text.strip()
             except:
                 pass
@@ -212,27 +231,28 @@ def run_data_mining(
                 phone_number,
                 company_name,
                 job_location,
-                job_sector,
+                job_sector
             ])
 
-            # Artık işlenen linki DataFrame'den silelim (Opsiyonel)
+            # İşlenen linki listeden sil (opsiyonel)
             df.drop(index, inplace=True)
 
             basarili_islem += 1
-            print(sari_metin(f"[ + ] Veri kazıldı! Toplam Başarılı İşlem: {basarili_islem}"))
+            print(sari_metin(f"[ + ] Veri Kazıldı! => Toplam Başarılı İşlem: {basarili_islem}"))
 
         except Exception as e:
             print(kirmizi_metin(f"Hata: {url} => {e}"))
 
+        # Kaydet
         wb.save(excel_file)
 
-    # Kalan linkleri tekrar yaz (Opsiyonel)
+    # Kalan linkleri tekrar yazmak isterseniz (opsiyonel)
     df.to_csv(links_csv, index=False, header=False)
 
     driver.quit()
 
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-    print(yesil_metin(f"\nBütün Veriler Excel Dosyasına Kaydedildi! Toplam Başarılı İşlem: {basarili_islem}, Süre: {elapsed_time:.2f} sn"))
-
+    elapsed_time = time.time() - start_time
+    print(yesil_metin(
+        f"\nBütün Veriler Excel'e Kaydedildi! Başarılı işlem: {basarili_islem}, Süre: {elapsed_time:.2f}sn"
+    ))
     return basarili_islem
