@@ -34,8 +34,10 @@ RUN wget -O /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-sta
     && rm /tmp/chrome.deb
 
 # Dinamik olarak ChromeDriver'ı, yüklü Chrome sürümüne uygun olarak indir ve yükle
-RUN CHROME_VERSION=$(google-chrome --version | grep -oP '\d+' | head -1) && \
+RUN CHROME_VERSION=$(google-chrome --version | sed -E 's/[^0-9]*([0-9]+).*/\1/') && \
+    echo "Chrome version: $CHROME_VERSION" && \
     CHROMEDRIVER_VERSION=$(wget -qO- https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION) && \
+    echo "ChromeDriver version: $CHROMEDRIVER_VERSION" && \
     wget https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip -O /tmp/chromedriver.zip && \
     unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
     rm /tmp/chromedriver.zip && \
